@@ -1,8 +1,8 @@
 class Claudeui < Formula
   desc "Real-time statusline, live monitor, and session analytics for Claude Code"
   homepage "https://slima4.github.io/claudeui/"
-  url "https://github.com/slima4/claudeui/archive/refs/tags/v0.1.4.tar.gz"
-  sha256 "eaf0f52854e5baa45175aed436075d85569c2db000f4a1b7d1f8be82ff408a3e"
+  url "https://github.com/slima4/claudeui/archive/refs/tags/v0.1.5.tar.gz"
+  sha256 "a10077d31ac9d44f0561eb8bef020f4b8c89392f93090b21c5d0b5e15e31b58f"
   license "MIT"
 
   depends_on "python@3"
