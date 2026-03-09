@@ -37,6 +37,13 @@ class Claudeui < Formula
       export INSTALL_DIR="#{HOMEBREW_PREFIX}/opt/claudeui/libexec"
       exec bash "#{libexec}/install.sh" "$@"
     EOS
+
+    (bin/"claude-ui-uninstall").write <<~EOS
+      #!/bin/bash
+      # Clean Claude Code settings before brew uninstall
+      export INSTALL_DIR="#{HOMEBREW_PREFIX}/opt/claudeui/libexec"
+      exec bash "#{libexec}/uninstall.sh" "$@"
+    EOS
   end
 
   def caveats
@@ -44,6 +51,11 @@ class Claudeui < Formula
       To complete setup (configure statusline, hooks, and slash commands):
 
         claude-ui-setup
+
+      Before uninstalling, clean Claude Code settings first:
+
+        claude-ui-uninstall     # removes statusline, hooks, commands
+        brew uninstall claudeui
 
       After setup:
 
