@@ -16,6 +16,9 @@ class ClaudeTui < Formula
     libexec.install "claude-ui-mode.py" if File.exist?("claude-ui-mode.py")
     libexec.install "claudetui.py" if File.exist?("claudetui.py")
 
+    # Patch fallback version to match formula version (for non-git installs)
+    inreplace libexec/"claudetui.py", /_FALLBACK_VERSION = ".*"/, "_FALLBACK_VERSION = \"#{version}\""
+
     # Primary CLI command
     (bin/"claudetui").write <<~EOS
       #!/bin/bash
