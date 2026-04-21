@@ -4,7 +4,7 @@ class ClaudeTui < Formula
   url "https://github.com/slima4/claude-tui/archive/refs/tags/v0.8.3.tar.gz"
   sha256 "24f23cfd6865d09f4eb1f994252d351669d74c36d40951d9ac443f4a5c658fd4"
   license "MIT"
-  revision 2
+  revision 3
 
   depends_on "python@3"
 
@@ -17,7 +17,7 @@ class ClaudeTui < Formula
     # Tool directories
     libexec.install Dir["claude-code-*"]
     libexec.install Dir["claude_tui_*"]
-    libexec.install Dir["widgets"] if File.directory?("widgets")
+    libexec.install "widgets" if File.directory?("widgets")
     libexec.install "install.sh"
     libexec.install "uninstall.sh" if File.exist?("uninstall.sh")
     libexec.install "claude-ui-mode.py" if File.exist?("claude-ui-mode.py")
@@ -33,10 +33,14 @@ class ClaudeTui < Formula
     # Patch fallback version to match formula version (for non-git installs)
     inreplace libexec/"claudetui.py", /_FALLBACK_VERSION = ".*"/, "_FALLBACK_VERSION = \"#{version}\""
 
-    # Primary CLI command
+    # Primary CLI command — pin to the declared python@3 dependency so we
+    # don't drift to whatever `python3` happens to be first in PATH on the
+    # user's machine. The dispatcher's `os.execvpe(sys.executable, ...)`
+    # then propagates this Python to every subcommand.
+    python = Formula["python@3"].opt_bin/"python3"
     (bin/"claudetui").write <<~EOS
       #!/bin/bash
-      exec python3 "#{libexec}/claudetui.py" "$@"
+      exec "#{python}" "#{libexec}/claudetui.py" "$@"
     EOS
   end
 
@@ -62,6 +66,9 @@ class ClaudeTui < Formula
   end
 
   test do
+    # Use the same Python the wrapper uses, not whatever `python3` PATH resolves to.
+    python = Formula["python@3"].opt_bin/"python3"
+
     # Basic CLI dispatcher
     assert_match "claudetui", shell_output("#{bin}/claudetui --version 2>&1")
 
@@ -72,8 +79,8 @@ class ClaudeTui < Formula
     # `system` returning false.
     SHARED_PACKAGES.each do |pkg|
       assert_match "ok", shell_output(
-        "python3 -c 'import sys; sys.path.insert(0, \"#{libexec}\"); " \
-        "import #{pkg}; print(\"ok\")' 2>&1"
+        "#{python} -c 'import sys; sys.path.insert(0, \"#{libexec}\"); " \
+        "import #{pkg}; print(\"ok\")' 2>&1",
       )
     end
 

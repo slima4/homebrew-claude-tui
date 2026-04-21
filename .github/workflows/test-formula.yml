@@ -1,0 +1,47 @@
+name: Test formula
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Formula/**"
+      - ".github/workflows/test-formula.yml"
+  pull_request:
+    paths:
+      - "Formula/**"
+      - ".github/workflows/test-formula.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: brew style + install + test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: brew style
+        run: brew style Formula/claude-tui.rb
+
+      - name: brew install --build-from-source
+        run: brew install --build-from-source --formula ./Formula/claude-tui.rb
+
+      - name: brew test
+        run: brew test --verbose claude-tui
+
+      - name: Smoke test installed binary
+        # Confirms the wrapper resolves and the dispatcher runs end-to-end.
+        # The brew test block already covers this, but a fresh shell invocation
+        # catches PATH or shebang regressions that test-block context can mask.
+        run: claudetui --version
