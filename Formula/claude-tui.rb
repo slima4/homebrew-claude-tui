@@ -36,8 +36,16 @@ class ClaudeTui < Formula
     # Primary CLI command — pin to the declared python@3 dependency so we
     # don't drift to whatever `python3` happens to be first in PATH on the
     # user's machine. The dispatcher's `os.execvpe(sys.executable, ...)`
-    # then propagates this Python to every subcommand.
-    python = Formula["python@3"].opt_bin/"python3"
+    # then propagates this Python to every Python subcommand.
+    #
+    # IMPORTANT: use the unversioned alias path `opt/python@3/bin/python3`,
+    # NOT `Formula["python@3"].opt_bin/"python3"`. The latter resolves to a
+    # versioned Cellar path at install time (e.g. /opt/.../python@3.14/...)
+    # and breaks when Homebrew rotates Python (3.14 → 3.15) — `brew cleanup`
+    # removes the old Cellar entry and the wrapper hits "bad interpreter"
+    # until the user `brew reinstall claude-tui`. The alias symlink lives
+    # at HOMEBREW_PREFIX/opt/python@3 and brew updates it on rotation.
+    python = HOMEBREW_PREFIX/"opt/python@3/bin/python3"
     (bin/"claudetui").write <<~EOS
       #!/bin/bash
       exec "#{python}" "#{libexec}/claudetui.py" "$@"
@@ -66,8 +74,9 @@ class ClaudeTui < Formula
   end
 
   test do
-    # Use the same Python the wrapper uses, not whatever `python3` PATH resolves to.
-    python = Formula["python@3"].opt_bin/"python3"
+    # Use the same Python the wrapper uses (alias path that survives Python
+    # version rotation). See the comment in `install` for the rationale.
+    python = HOMEBREW_PREFIX/"opt/python@3/bin/python3"
 
     # Basic CLI dispatcher
     assert_match "claudetui", shell_output("#{bin}/claudetui --version 2>&1")

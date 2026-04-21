@@ -31,17 +31,35 @@ jobs:
       - name: Set up Homebrew
         uses: Homebrew/actions/setup-homebrew@master
 
+      # `brew install --formula <path>` is rejected by Homebrew with
+      # "formulae must be in a tap"; `brew test <name>` only resolves
+      # tap-registered formulae. Symlink the checkout into the standard
+      # tap location so install + test work by name (slima4/claude-tui/claude-tui).
+      - name: Register checkout as local tap
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          TAP_DIR="$(brew --repository)/Library/Taps/${OWNER}/homebrew-claude-tui"
+          mkdir -p "$(dirname "${TAP_DIR}")"
+          rm -rf "${TAP_DIR}"
+          ln -s "${GITHUB_WORKSPACE}" "${TAP_DIR}"
+
       - name: brew style
-        run: brew style Formula/claude-tui.rb
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: brew style "${OWNER}/claude-tui/claude-tui"
 
       - name: brew install --build-from-source
-        run: brew install --build-from-source --formula ./Formula/claude-tui.rb
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: brew install --build-from-source "${OWNER}/claude-tui/claude-tui"
 
       - name: brew test
-        run: brew test --verbose claude-tui
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: brew test --verbose "${OWNER}/claude-tui/claude-tui"
 
       - name: Smoke test installed binary
-        # Confirms the wrapper resolves and the dispatcher runs end-to-end.
-        # The brew test block already covers this, but a fresh shell invocation
-        # catches PATH or shebang regressions that test-block context can mask.
+        # Fresh shell invocation — brew test runs assertions in a sandboxed
+        # context. This confirms PATH and shebang are wired up after install.
         run: claudetui --version
