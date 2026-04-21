@@ -1,5 +1,7 @@
 # Homebrew Tap for ClaudeTUI
 
+[![Test formula](https://github.com/slima4/homebrew-claude-tui/actions/workflows/test-formula.yml/badge.svg?branch=main)](https://github.com/slima4/homebrew-claude-tui/actions/workflows/test-formula.yml)
+
 Real-time statusline, live monitor, and session analytics for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ## Install
