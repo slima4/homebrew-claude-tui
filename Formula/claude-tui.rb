@@ -4,16 +4,31 @@ class ClaudeTui < Formula
   url "https://github.com/slima4/claude-tui/archive/refs/tags/v0.8.3.tar.gz"
   sha256 "24f23cfd6865d09f4eb1f994252d351669d74c36d40951d9ac443f4a5c658fd4"
   license "MIT"
-  revision 3
+  revision 4
 
   depends_on "python@3"
 
-  # Shared Python packages (underscored) imported by every tool via PYTHONPATH.
-  # Listed explicitly because the `claude-code-*` glob does not match them and
-  # a missing package breaks every subcommand at runtime (issue #6).
-  SHARED_PACKAGES = %w[claude_tui_core claude_tui_components].freeze
+  # Fallback list of shared Python packages (underscored) imported by every
+  # tool via PYTHONPATH. Used only when the source tarball doesn't ship a
+  # `.brew-manifest.json` (true for v0.8.3 and earlier). v0.8.4+ ships the
+  # manifest; this fallback should be deleted once we no longer support
+  # rolling back to v0.8.3.
+  FALLBACK_SHARED_PACKAGES = %w[claude_tui_core claude_tui_components].freeze
 
   def install
+    require "json"
+
+    # Read shared-package list from the source tarball's manifest. The source
+    # repo's CI (manifest-check.yml) enforces that the manifest stays in sync
+    # with the actual claude_tui_* directories — see issue #6 for the regression
+    # class this prevents (silently dropping a shared package from packaging).
+    manifest_path = Pathname.pwd/".brew-manifest.json"
+    shared_packages = if manifest_path.exist?
+      JSON.parse(manifest_path.read).fetch("shared_packages")
+    else
+      FALLBACK_SHARED_PACKAGES
+    end
+
     # Tool directories
     libexec.install Dir["claude-code-*"]
     libexec.install Dir["claude_tui_*"]
@@ -22,10 +37,19 @@ class ClaudeTui < Formula
     libexec.install "uninstall.sh" if File.exist?("uninstall.sh")
     libexec.install "claude-ui-mode.py" if File.exist?("claude-ui-mode.py")
     libexec.install "claudetui.py" if File.exist?("claudetui.py")
+    # Persist the manifest (or write a synthetic one from fallback) so the test
+    # block can read the canonical list without re-deriving it.
+    if manifest_path.exist?
+      libexec.install ".brew-manifest.json"
+    else
+      (libexec/".brew-manifest.json").write(
+        JSON.generate("shared_packages" => FALLBACK_SHARED_PACKAGES),
+      )
+    end
 
     # Fail the build if a shared package was dropped during install — every
     # subcommand imports these and would ModuleNotFoundError at runtime.
-    SHARED_PACKAGES.each do |pkg|
+    shared_packages.each do |pkg|
       odie "Required shared package '#{pkg}' missing after install (issue #6)" \
         unless (libexec/pkg).directory?
     end
@@ -78,6 +102,11 @@ class ClaudeTui < Formula
     # version rotation). See the comment in `install` for the rationale.
     python = HOMEBREW_PREFIX/"opt/python@3/bin/python3"
 
+    # Read the canonical shared-package list from the manifest the install
+    # block persisted into libexec.
+    require "json"
+    shared_packages = JSON.parse((libexec/".brew-manifest.json").read).fetch("shared_packages")
+
     # Basic CLI dispatcher
     assert_match "claudetui", shell_output("#{bin}/claudetui --version 2>&1")
 
@@ -86,7 +115,7 @@ class ClaudeTui < Formula
     # raises on non-zero exit, and assert_match verifies the marker — so a
     # failed import surfaces as an explicit test failure instead of a silent
     # `system` returning false.
-    SHARED_PACKAGES.each do |pkg|
+    shared_packages.each do |pkg|
       assert_match "ok", shell_output(
         "#{python} -c 'import sys; sys.path.insert(0, \"#{libexec}\"); " \
         "import #{pkg}; print(\"ok\")' 2>&1",
