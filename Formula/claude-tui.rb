@@ -4,7 +4,7 @@ class ClaudeTui < Formula
   url "https://github.com/slima4/claude-tui/archive/refs/tags/v0.8.3.tar.gz"
   sha256 "24f23cfd6865d09f4eb1f994252d351669d74c36d40951d9ac443f4a5c658fd4"
   license "MIT"
-  revision 1
+  revision 2
 
   depends_on "python@3"
 
@@ -66,11 +66,15 @@ class ClaudeTui < Formula
     assert_match "claudetui", shell_output("#{bin}/claudetui --version 2>&1")
 
     # Regression test for issue #6: every shared package must be importable.
-    # Mirrors the dispatcher's PYTHONPATH=libexec injection and dies if any
-    # package failed to land during install.
+    # Mirrors the dispatcher's PYTHONPATH=libexec injection. shell_output
+    # raises on non-zero exit, and assert_match verifies the marker — so a
+    # failed import surfaces as an explicit test failure instead of a silent
+    # `system` returning false.
     SHARED_PACKAGES.each do |pkg|
-      system "python3", "-c",
-             "import sys; sys.path.insert(0, '#{libexec}'); import #{pkg}"
+      assert_match "ok", shell_output(
+        "python3 -c 'import sys; sys.path.insert(0, \"#{libexec}\"); " \
+        "import #{pkg}; print(\"ok\")' 2>&1"
+      )
     end
 
     # End-to-end: a subcommand whose entrypoint imports both shared
