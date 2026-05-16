@@ -128,3 +128,4 @@ class ClaudeTui < Formula
                  shell_output("#{bin}/claudetui stats --help 2>&1"))
   end
 end
+# dry-run token check 25952549716 2026-05-16T04:18:23Z
