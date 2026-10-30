@@ -73,11 +73,13 @@ class ClaudeTui < Formula
     # export them for their bundled interpreter and terminals opened from
     # such apps pass them on). The wrapper always runs this exact Python, so
     # they are never meant for it — left set, it aborts with "Failed to
-    # import encodings module" before running any code.
+    # import encodings module" before running any code. The originals are
+    # kept in CLAUDETUI_ORIG_* so `claudetui sniff` can hand them back to
+    # claude unchanged.
     python = HOMEBREW_PREFIX/"opt/python@3/bin/python3"
     (bin/"claudetui").write <<~EOS
       #!/bin/bash
-      exec env -u PYTHONHOME -u PYTHONPATH "#{python}" "#{libexec}/claudetui.py" "$@"
+      exec env -u PYTHONHOME -u PYTHONPATH CLAUDETUI_ORIG_PYTHONHOME="${PYTHONHOME-}" CLAUDETUI_ORIG_PYTHONPATH="${PYTHONPATH-}" "#{python}" "#{libexec}/claudetui.py" "$@"
     EOS
   end
 
