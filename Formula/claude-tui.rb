@@ -68,10 +68,16 @@ class ClaudeTui < Formula
     # removes the old Cellar entry and the wrapper hits "bad interpreter"
     # until the user `brew reinstall claude-tui`. The alias symlink lives
     # at HOMEBREW_PREFIX/opt/python@3 and brew updates it on rotation.
+    #
+    # `env -u` drops an inherited PYTHONHOME/PYTHONPATH (AppImage launchers
+    # export them for their bundled interpreter and terminals opened from
+    # such apps pass them on). The wrapper always runs this exact Python, so
+    # they are never meant for it — left set, it aborts with "Failed to
+    # import encodings module" before running any code.
     python = HOMEBREW_PREFIX/"opt/python@3/bin/python3"
     (bin/"claudetui").write <<~EOS
       #!/bin/bash
-      exec "#{python}" "#{libexec}/claudetui.py" "$@"
+      exec env -u PYTHONHOME -u PYTHONPATH "#{python}" "#{libexec}/claudetui.py" "$@"
     EOS
   end
 
@@ -108,6 +114,11 @@ class ClaudeTui < Formula
 
     # Basic CLI dispatcher
     assert_match "claudetui", shell_output("#{bin}/claudetui --version 2>&1")
+
+    # An inherited PYTHONHOME (AppImage terminals export one) must not reach
+    # the wrapper's interpreter, or it aborts looking for its stdlib.
+    assert_match "claudetui",
+                 shell_output("PYTHONHOME=/nonexistent/usr/ #{bin}/claudetui --version 2>&1")
 
     # Regression test for issue #6: every shared package must be importable.
     # Mirrors the dispatcher's PYTHONPATH=libexec injection. shell_output
